@@ -12,7 +12,9 @@
 
 基于 Dify Chatflow 与 FastAPI 的智能旅行规划工作台
 
-[功能特性](#功能特性) · [系统架构](#系统架构) · [快速开始](#快速开始) · [Docker 部署](#docker-部署) · [API 文档](docs/api.md) · [开发与测试](#开发与测试)
+由 [shjhijoaj](https://github.com/shjhijoaj) 与 [Codex](https://openai.com/codex/)（AI 编程协作）共同构建。
+
+[功能特性](#功能特性) · [系统架构](#系统架构) · [快速开始](#快速开始) · [Docker 部署](#docker-部署) · [API 文档](docs/api.md) · [开发与测试](#开发与测试) · [参与作者](#参与作者) · [参考与致谢](#参考与致谢)
 
 </div>
 
@@ -20,7 +22,7 @@
 
 ## 项目简介
 
-行旅围绕「输入需求 → 知识检索 → 行程规划 → 规则检查 → 编辑与导出」构建旅行规划流程。输入目的地、日期、总预算和同行偏好后，可以按天查看行程，核对天气、预算与路线，再保存版本或导出方案。
+行旅围绕「输入需求 → 知识检索 → 行程规划 → 规则检查 → 编辑与导出」构建旅行规划流程。输入目的地、日期、总预算和同行偏好后，可以按天查看行程，核对天气、预算与路线，再保存版本或导出方案。每个外部结果都尽量带有来源、时间和可核对的状态，方便用户在出行前继续确认。
 
 项目将 Dify 的模型编排与独立的 Web 应用结合，提供账号、持久化偏好、历史版本和流式响应。当前版本为 **v0.4.0**，适合本地体验、单实例部署和 AI 应用工程学习。无需模型密钥即可运行明确标注的离线演示；配置 Dify 后可使用模型规划与知识库检索。
 
@@ -36,6 +38,13 @@
 </details>
 
 截图使用固定的虚构演示行程，用于展示界面，不代表实时天气、票价或真实预订结果。
+
+## 一次规划的处理路径
+
+1. **收集需求**：校验目的地、日期、总预算、同行人数和偏好；登录用户可选择是否带入自己保存的偏好。
+2. **补充上下文**：确认同名城市，查询可用的天气快照；Dify Chatflow 内的检索节点为规划模型提供旅行知识。
+3. **生成并检查**：模型按天生成方案，工作流检查并按条件修正；FastAPI 另行检查可解析的时间冲突、重复地点和预算算术。
+4. **审阅与保存**：以 SSE 展示进度，保留检索来源和天气快照；用户可以编辑结构化日程、重新规划、保存版本或导出。
 
 ## 功能特性
 
@@ -195,6 +204,25 @@ Compose 默认仅绑定本机端口，账号与历史保存在 `travel-data` 卷
 
 完整字段、账号接口、错误码及 SSE 事件说明见 [API 文档](docs/api.md)。
 
+### 最小调用示例
+
+服务启动后，可以调用阻塞式接口验证离线演示（`DIFY_API_KEY` 留空，`LOCAL_FALLBACK=true`）：
+
+```bash
+curl -X POST http://127.0.0.1:8010/api/travel/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "departure": "上海",
+    "destination": "广州",
+    "travel_dates": "2026-10-01/2026-10-03",
+    "budget": "5000",
+    "companions": "2",
+    "preferences": "慢节奏、历史文化"
+  }'
+```
+
+响应中的 `answer` 是完整行程正文，`validation` 是独立规则检查；`weather` 记录天气快照，真实 Dify 返回引用时通过 `sources` 提供检索来源。接入真实 Dify 后，调用方式保持不变。
+
 ## 项目结构
 
 ```text
@@ -222,6 +250,17 @@ smart-travel-agent/
 └── docker-compose.yml
 ```
 
+### 关键模块
+
+| 模块 | 作用 |
+| --- | --- |
+| `api/main.py` | 统一入口、请求校验、规划编排和历史版本管理 |
+| `api/streaming.py` | 解码 Dify SSE，过滤推理片段并转发可展示内容 |
+| `api/itinerary.py` | 解析模型输出，执行时间、地点和预算规则检查 |
+| `api/weather.py` / `api/routes.py` | 对接 Open-Meteo、Nominatim 和 OSRM，并保留服务状态 |
+| `api/accounts.py` / `api/history.py` | 账号会话、显式偏好和 SQLite 历史隔离 |
+| `workflow/` / `knowledge/` / `prompts/` | 可导入的 Dify 工作流、示例知识和提示词 |
+
 ## 开发与测试
 
 激活虚拟环境后运行（Windows 也可使用 `.\.venv\Scripts\python.exe` 替代 `python`）：
@@ -246,6 +285,18 @@ node tests/browser-account.cjs
 
 GitHub Actions 执行 API 测试、工作流校验、固定场景评测、浏览器回归、Docker 构建和源码打包。源码包输出到 `release/smart-travel-agent-v0.4.0.zip`，包含文件清单与 SHA256；运行数据、密钥、虚拟环境和个人交接资料不进入发布包。
 
+## 贡献
+
+欢迎通过 Issue 反馈问题或提出可复现的改进建议。提交 Pull Request 前，请先说明行为变化、外部服务影响和验证方式，并运行与改动相关的测试：
+
+```bash
+python -m pytest -q
+python tests/validate_workflow_cases.py
+python scripts/evaluate_cases.py
+```
+
+涉及 Dify DSL、知识库或外部服务时，请同时更新对应文档，并避免提交 `.env`、访问令牌、真实账号、个人行程和未获授权的第三方内容。小范围、单一目的的提交更便于审阅。
+
 ## 文档与版本
 
 - [系统架构](docs/architecture.md)
@@ -255,6 +306,7 @@ GitHub Actions 执行 API 测试、工作流校验、固定场景评测、浏览
 - [测试与真实联调](docs/testing.md)
 - [v0.4.0 发布记录](docs/RELEASE.md)
 - [后续计划](docs/roadmap.md)
+- [参考与致谢清单](docs/CREDITS.md)
 
 ## 当前边界
 
@@ -265,10 +317,32 @@ GitHub Actions 执行 API 测试、工作流校验、固定场景评测、浏览
 - Dify 工作流先规划与检查，首段正文可能等待几十秒；令牌和成本数据为估算。
 - 当前面向本地、单实例使用。公网运营需另外配置 HTTPS、注册和模型用量管理、备份及运维。
 
+## 参与作者
+
+| 参与者 | 角色与贡献 |
+| --- | --- |
+| [shjhijoaj](https://github.com/shjhijoaj) | 项目发起与维护：旅行场景需求、功能取舍、Dify 配置与项目发布。 |
+| [Codex · OpenAI](https://openai.com/codex/) | AI 编程协作：协助接口与前端实现、测试编写和执行、问题定位、文档整理与发布。 |
+
+感谢后续通过 Issue、Pull Request 和实际体验帮助改进项目的参与者。功能设计、发布与维护由仓库维护者决定。
+
 ## 参考与致谢
 
-主页组织与 Agent 工程思路参考 [AI-ParallelLife-Agent](https://github.com/Pderi/AI-ParallelLife-Agent)。本项目使用旅行规划场景与 Python / Dify 技术栈，功能以本仓库实现和测试为准。
+特别感谢 **秦健超（[Pderi](https://github.com/Pderi)）** 公开的 [AI-ParallelLife-Agent](https://github.com/Pderi/AI-ParallelLife-Agent)。其主页的项目介绍、技术栈、架构与快速开始组织方式，以及对会话、SSE、RAG 和工程交付的说明，为本项目提供了学习参考。行旅将这些工程思路用于旅行规划场景，具体能力与实现以本仓库为准。
 
-感谢 [Dify](https://github.com/langgenius/dify)、[FastAPI](https://fastapi.tiangolo.com/)、[Open-Meteo](https://open-meteo.com/)、[OpenStreetMap](https://www.openstreetmap.org/copyright) 和 [OSRM](https://project-osrm.org/) 提供的工具与服务。
+| 项目 / 服务 | 在行旅中的作用 |
+| --- | --- |
+| [Dify](https://github.com/langgenius/dify) | Chatflow 编排、模型接入与知识库检索 |
+| [FastAPI](https://fastapi.tiangolo.com/) / [HTTPX](https://www.python-httpx.org/) | API 服务、参数校验与上游异步调用 |
+| [Open-Meteo](https://open-meteo.com/) | 城市检索与天气预报快照 |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) / [Nominatim](https://nominatim.org/) / [OSRM](https://project-osrm.org/) | 地点地理编码与道路距离、时间估算 |
+| [SQLite](https://www.sqlite.org/) | 账号、偏好、历史版本与运行记录 |
+| [pytest](https://pytest.org/) / [Playwright](https://playwright.dev/) | API 和浏览器回归验证 |
+| [Docker](https://www.docker.com/) / [GitHub Actions](https://github.com/features/actions) | 可复现部署与持续集成 |
+| [OpenAI Codex](https://openai.com/codex/) | 开发、测试、文档和发布中的 AI 协作支持 |
 
-维护者：[shjhijoaj](https://github.com/shjhijoaj)。问题与建议请提交 [Issue](https://github.com/shjhijoaj/smart-travel-agent/issues)。仓库目前未指定开源许可证。
+更多依赖与数据来源见 [参考与致谢清单](docs/CREDITS.md)。第三方组件与数据服务按各自许可证和条款使用。
+
+## 联系与许可
+
+问题、建议和复现步骤欢迎提交 [Issue](https://github.com/shjhijoaj/smart-travel-agent/issues)。仓库目前未指定开源许可证。
