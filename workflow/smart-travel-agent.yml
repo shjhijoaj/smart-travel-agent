@@ -1,0 +1,729 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: advanced-chat
+  name: 智能旅行规划 Agent
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.24@9e12eef09973667f0eaf4f082af883167e1de88740b22e71e71488d020c3778a
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        knowledge_file_size_limit: 15
+        single_chunk_attachment_limit: 10
+        skill_file_size_limit: 50
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: start
+        targetType: template-transform
+      id: 1789998988918-source-1790000480422-target
+      selected: false
+      source: '1789998988918'
+      sourceHandle: source
+      target: '1790000480422'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1789999648884-source-1789999839637-target
+      selected: false
+      source: '1789999648884'
+      sourceHandle: source
+      target: '1789999839637'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: llm
+        targetType: code
+      id: 1789999839637-source-1790002185425-target
+      selected: false
+      source: '1789999839637'
+      sourceHandle: source
+      target: '1790002185425'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: template-transform
+        targetType: knowledge-retrieval
+      id: 1790000480422-source-1789999648884-target
+      selected: false
+      source: '1790000480422'
+      sourceHandle: source
+      target: '1789999648884'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: code
+        targetType: if-else
+      id: 1790002185425-source-1790002323186-target
+      selected: false
+      source: '1790002185425'
+      sourceHandle: source
+      target: '1790002323186'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: if-else
+        targetType: answer
+      id: 1790002323186-false-1790001519165-target
+      source: '1790002323186'
+      sourceHandle: 'false'
+      target: '1790001519165'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: if-else
+        targetType: llm
+      id: 1790002323186-true-1790002556842-target
+      selected: false
+      source: '1790002323186'
+      sourceHandle: 'true'
+      target: '1790002556842'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        iteration_id: null
+        loop_id: null
+        sourceType: llm
+        targetType: answer
+      id: 1790002556842-source-17900029074460-target
+      source: '1790002556842'
+      sourceHandle: source
+      target: '17900029074460'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: departure
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: departure
+        - default: ''
+          hint: ''
+          label: destination
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: destination
+        - default: ''
+          hint: ''
+          label: travel_dates
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: travel_dates
+        - default: ''
+          hint: ''
+          label: budget
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: budget
+        - default: ''
+          hint: ''
+          label: companions
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: companions
+        - default: ''
+          hint: ''
+          label: preferences
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: preferences
+        - default: 中文
+          hint: ''
+          label: language
+          options:
+          - 中文
+          - English
+          placeholder: ''
+          required: true
+          type: select
+          variable: language
+      height: 264
+      id: '1789998988918'
+      position:
+        x: 0
+        y: 0
+      positionAbsolute:
+        x: 0
+        y: 0
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - FUmOexVJeo5Whq+NO4wP6qMLEigdjbovVe58V4khHbE2PUVS0Xr4PsqpgtIqjzV5
+        metadata_filtering_mode: automatic
+        metadata_model_config:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-flash
+          provider: langgenius/deepseek/deepseek
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: reranking_model
+          reranking_model: null
+          score_threshold: null
+          top_k: 5
+          weights: null
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1790000480422'
+        - output
+        retrieval_mode: multiple
+        selected: false
+        title: 旅行知识检索
+        type: knowledge-retrieval
+      height: 89
+      id: '1789999648884'
+      position:
+        x: 683
+        y: 140
+      positionAbsolute:
+        x: 683
+        y: 140
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1789999648884'
+          - result
+        default_value: null
+        error_strategy: null
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 65dc2778-7f56-46f0-98c9-346c2ccfb9bd
+          role: system
+          text: '你是一名专业的智能旅行规划助手，负责根据用户需求和旅行知识库内容生成详细、合理、可执行的旅行方案。
+
+
+            必须遵守以下规则：
+
+
+            1. 优先使用知识库中的信息。
+
+            2. 不得编造实时天气、实时交通、门票价格、酒店库存或景点开放状态。
+
+            3. 无法确认的信息必须标记为“待确认”。
+
+            4. 必须综合考虑出发地、目的地、日期、预算、同行人数和用户偏好。
+
+            5. 每天的行程安排要考虑景点之间的距离，避免路线来回折返。
+
+            6. 用户提出“少走路”时，应优先安排相邻景点，并减少连续步行。
+
+            7. 如果用户提到下雨，必须提供室内备选方案。
+
+            8. 行程时间不能互相冲突。
+
+            9. 同一天不要重复安排相同景点。
+
+            10. 输出内容要具体、清晰、适合用户直接执行。
+
+            11. 默认使用中文回答。'
+        - id: 87fc2a6d-af1a-4044-944f-cc50d4f85f72
+          role: user
+          text: '请根据以下旅行需求，生成一份完整的旅行规划。
+
+
+            【用户需求】
+
+            出发地：{{#1789998988918.departure#}}
+
+            目的地：{{#1789998988918.destination#}}
+
+            出行日期：{{#1789998988918.travel_dates#}}
+
+            预算：{{#1789998988918.budget#}}（元）
+
+            同行人数：{{#1789998988918.companions#}}
+
+            旅行偏好：{{#1789998988918.preferences#}}
+
+            输出语言：{{#1789998988918.language#}}
+
+            【知识库参考资料】{{#context#}}
+
+
+            请按照以下格式输出：
+
+
+            一、行程概览
+
+
+            - 出发地：
+
+            - 目的地：
+
+            - 出行日期：
+
+            - 同行人数：
+
+            - 预算：
+
+            - 旅行特点：
+
+
+            二、每日行程
+
+
+            ### 第一天
+
+
+            | 时间 | 行程安排 | 地点 | 预计费用 | 备注 |
+
+            |---|---|---|---:|---|
+
+
+            ### 第二天
+
+
+            | 时间 | 行程安排 | 地点 | 预计费用 | 备注 |
+
+            |---|---|---|---:|---|
+
+
+            根据实际出行天数继续生成。
+
+
+            三、预算估算
+
+
+            | 项目 | 预计费用 |
+
+            |---|---:|
+
+            | 城市交通 | |
+
+            | 住宿 | |
+
+            | 餐饮 | |
+
+            | 门票 | |
+
+            | 其他 | |
+
+            | 合计 | |
+
+
+            四、下雨备选方案
+
+
+            请列出适合雨天的室内景点、室内活动或替代安排。
+
+
+            五、注意事项
+
+
+            列出交通、预约、费用、天气和开放时间等需要用户进一步确认的信息。
+
+
+            所有不能确定的信息都标记为“待确认”。'
+        selected: false
+        structured_output_enabled: false
+        title: 行程规划
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1789999839637'
+      position:
+        x: 1024
+        y: 155.83333333333331
+      positionAbsolute:
+        x: 1024
+        y: 155.83333333333331
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        selected: false
+        template: "旅行规划需求：\r\n\r\n出发地：{{departure}}\r\n目的地：{{destination}}\r\n出行日期：{{travel_dates}}\r\
+          \n预算：{{budget}} 元\r\n同行人数：{{companions}} 人\r\n旅行偏好：{{preferences}}\r\n输出语言：{{language}}\r\
+          \n\r\n请根据以上信息，为用户规划一份合理、可执行的旅行方案。"
+        title: 需求整理
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1789998988918'
+          - departure
+          value_type: string
+          variable: departure
+        - value_selector:
+          - '1789998988918'
+          - destination
+          value_type: string
+          variable: destination
+        - value_selector:
+          - '1789998988918'
+          - travel_dates
+          value_type: string
+          variable: travel_dates
+        - value_selector:
+          - '1789998988918'
+          - budget
+          value_type: string
+          variable: budget
+        - value_selector:
+          - '1789998988918'
+          - companions
+          value_type: string
+          variable: companions
+        - value_selector:
+          - '1789998988918'
+          - preferences
+          value_type: string
+          variable: preferences
+        - value_selector:
+          - '1789998988918'
+          - language
+          value_type: string
+          variable: language
+      height: 51
+      id: '1790000480422'
+      position:
+        x: 342
+        y: 150.5
+      positionAbsolute:
+        x: 342
+        y: 150.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#1789999839637.text#}}'
+        selected: false
+        title: 直接回复
+        type: answer
+        variables: []
+      height: 101
+      id: '1790001519165'
+      position:
+        x: 2067
+        y: 283.43333333333334
+      positionAbsolute:
+        x: 2067
+        y: 283.43333333333334
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import re\n\ndef main(plan: str, budget: str, travel_dates: str = \"\
+          \", companions: str = \"\") -> dict:\n    plan = plan or \"\"\n    errors\
+          \ = []\n    warnings = []\n\n    if len(plan.strip()) < 100:\n        errors.append(\"\
+          行程内容过短或为空\")\n\n    for section in [\"行程概览\", \"每日行程\", \"预算估算\"]:\n   \
+          \     if section not in plan:\n            warnings.append(\"缺少：\" + section)\n\
+          \n    try:\n        budget_value = float(budget)\n    except:\n        budget_value\
+          \ = 0\n\n    amounts = re.findall(\n        r\"(?:合计|总计|总预算)[^0-9]{0,20}([0-9]+(?:\\\
+          .[0-9]+)?)\",\n        plan\n    )\n\n    total = 0\n    if amounts:\n \
+          \       try:\n            total = float(amounts[-1])\n            if budget_value\
+          \ > 0 and total > budget_value:\n                errors.append(\n      \
+          \              \"预计总费用 %.0f 元超过预算 %.0f 元\"\n                    % (total,\
+          \ budget_value)\n                )\n        except:\n            warnings.append(\"\
+          预算合计无法解析\")\n    else:\n        warnings.append(\"未找到预算合计\")\n\n    if errors:\n\
+          \        status = \"需要修正\"\n    else:\n        status = \"校验通过\"\n\n   \
+          \ # 必须返回名为 result 的字段\n    return {\n        \"result\": status\n    }"
+        code_language: python3
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 行程校验
+        type: code
+        variables:
+        - value_selector:
+          - '1789999839637'
+          - text
+          value_type: string
+          variable: plan
+        - value_selector:
+          - '1789998988918'
+          - budget
+          value_type: string
+          variable: budget
+        - value_selector:
+          - '1789998988918'
+          - travel_dates
+          value_type: string
+          variable: travel_dates
+        - value_selector:
+          - '1789998988918'
+          - companions
+          value_type: string
+          variable: companions
+      height: 51
+      id: '1790002185425'
+      position:
+        x: 1365
+        y: 188.33333333333331
+      positionAbsolute:
+        x: 1365
+        y: 188.33333333333331
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: e45fcc1d-031a-444d-9494-a8d68dfa8f72
+            value: 需要修正
+            varType: string
+            variable_selector:
+            - '1790002185425'
+            - result
+          logical_operator: and
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 123
+      id: '1790002323186'
+      position:
+        x: 1706
+        y: 160.83333333333331
+      positionAbsolute:
+        x: 1706
+        y: 160.83333333333331
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 67d40b1e-9467-4730-9168-9f9410ec4fa7
+          role: system
+          text: '你是旅行规划结果修正助手。
+
+
+            请根据原始行程、预算要求和校验错误，修正旅行方案。
+
+
+            规则：
+
+            1. 必须解决所有校验错误。
+
+            2. 总费用不得超过用户预算。
+
+            3. 不要删除用户偏好的核心内容。
+
+            4. 不要编造实时天气、价格、开放时间或库存。
+
+            5. 无法确认的信息标记为“待确认”。
+
+            6. 保留完整的每日行程、预算估算、雨天方案和注意事项。
+
+            7. 只输出修正后的完整旅行方案，不要解释修改过程。'
+        - id: 8c011a1c-82e8-475b-aa4b-24c4b02fadc8
+          role: user
+          text: '插入变量：
+
+            原始行程：{{#1789999839637.text#}}
+
+
+
+            用户预算：{{#1789998988918.budget#}}
+
+
+            校验错误：{{#1790002185425.result#}}
+
+            校验警告：{{#1790002185425.result#}}
+
+            最后填写：请输出修正后的完整旅行方案。'
+        selected: false
+        title: 行程修正
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1790002556842'
+      position:
+        x: 2067
+        y: 116.43333333333334
+      positionAbsolute:
+        x: 2067
+        y: 116.43333333333334
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        answer: '{{#1790002556842.text#}}'
+        desc: ''
+        isInIteration: false
+        isInLoop: false
+        selected: false
+        title: 输出修正方案
+        type: answer
+        variables: []
+      height: 101
+      id: '17900029074460'
+      position:
+        x: 2408
+        y: 123.93333333333334
+      positionAbsolute:
+        x: 2408
+        y: 123.93333333333334
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: -1248.7499999999998
+      y: 215.24666666666664
+      zoom: 0.7
+  rag_pipeline_variables: []

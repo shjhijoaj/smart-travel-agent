@@ -1,0 +1,16 @@
+services:
+  travel-agent-api:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://host.docker.internal}
+      WEATHER_TRUST_ENV: "false"
+    restart: unless-stopped
+    volumes:
+      - travel-data:/app/data
+
+volumes:
+  travel-data:

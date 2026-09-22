@@ -1,0 +1,14 @@
+# Use with: docker compose -f docker-compose.yml -f docker-compose.dify.yml up -d --build
+# Dify must already be running. Override DIFY_DOCKER_NETWORK for a renamed stack.
+services:
+  travel-agent-api:
+    environment:
+      DIFY_BASE_URL: ${DIFY_DOCKER_BASE_URL:-http://nginx}
+    networks:
+      - default
+      - dify
+
+networks:
+  dify:
+    external: true
+    name: ${DIFY_DOCKER_NETWORK:-docker_default}

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run API tests
+        run: python -m pytest -q
+
+      - name: Validate workflow cases
+        run: python tests/validate_workflow_cases.py
+
+      - name: Run deterministic product evaluation
+        run: python scripts/evaluate_cases.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start test server
+        run: |
+          python -m uvicorn api.main:app --host 127.0.0.1 --port 8010 > /tmp/travel-server.log 2>&1 &
+          python -c "import time,urllib.request; time.sleep(2); urllib.request.urlopen('http://127.0.0.1:8010/api/health')"
+        env:
+          WEATHER_ENABLED: "false"
+
+      - name: Browser regression
+        run: |
+          node tests/browser-smoke.cjs
+          node tests/browser-account.cjs
+
+      - name: Build Docker image
+        run: docker build -t smart-travel-agent:ci .
+
+      - name: Build source release
+        run: python scripts/build_release.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-release
+          path: release/*
