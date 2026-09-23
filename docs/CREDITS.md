@@ -7,12 +7,6 @@
 - **维护者：** [shjhijoaj](https://github.com/shjhijoaj) 负责旅行场景需求、功能取舍、Dify 配置、项目发布与后续维护。
 - **AI 协作工具：** [OpenAI Codex](https://openai.com/codex/) 参与接口与前端实现、测试编写和执行、问题定位、文档整理与发布；以 AI 编程协作角色署名。
 
-## 文档参考
-
-- **秦健超（Pderi）** 的 [AI-ParallelLife-Agent](https://github.com/Pderi/AI-ParallelLife-Agent)：参考其公开主页的结构、快速开始组织方式和 Agent 工程说明思路。
-
-同时参考其会话管理、SSE、RAG 和工程交付的表达方式。本项目采用旅行业务场景与 Python / Dify 技术栈，已实现功能和测试结果以本仓库为准，不沿用参考项目的性能指标或个人经历。
-
 ## 直接依赖与工具
 
 | 项目 | 用途 | 入口 |
