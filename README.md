@@ -328,7 +328,6 @@ python scripts/evaluate_cases.py
 
 ## 参考与致谢
 
-特别感谢 **秦健超（[Pderi](https://github.com/Pderi)）** 公开的 [AI-ParallelLife-Agent](https://github.com/Pderi/AI-ParallelLife-Agent)。其主页的项目介绍、技术栈、架构与快速开始组织方式，以及对会话、SSE、RAG 和工程交付的说明，为本项目提供了学习参考。行旅将这些工程思路用于旅行规划场景，具体能力与实现以本仓库为准。
 
 | 项目 / 服务 | 在行旅中的作用 |
 | --- | --- |
