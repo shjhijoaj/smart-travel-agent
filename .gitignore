@@ -16,3 +16,6 @@ test-results/
 _codex_probe.txt
 *.zip
 *.zip.sha256
+
+# Local learning notes stay in the delivery folder.
+/代码学习路线.md

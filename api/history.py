@@ -15,6 +15,11 @@ def database():
     conn = sqlite3.connect(path, timeout=10)
     conn.row_factory = sqlite3.Row
     try:
+        # WAL allows reads while a short write is in progress; busy_timeout avoids
+        # transient "database is locked" errors when telemetry and history overlap.
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("""CREATE TABLE IF NOT EXISTS plans (
             id TEXT PRIMARY KEY, owner TEXT NOT NULL, created_at TEXT NOT NULL,
             request TEXT NOT NULL, result TEXT NOT NULL, parent_id TEXT)""")
@@ -44,10 +49,11 @@ def get(owner, plan_id):
                 result=json.loads(row['result']), parent_id=row['parent_id'])
 
 
-def list_plans(owner, limit=100):
+def list_plans(owner, limit=100, query='', offset=0):
     with database() as conn:
-        rows = conn.execute("SELECT id, created_at, request, parent_id FROM plans WHERE owner=? ORDER BY created_at DESC LIMIT ?",
-                            (owner, limit)).fetchall()
+        term='%'+query.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')+'%'
+        rows = conn.execute("SELECT id, created_at, request, parent_id FROM plans WHERE owner=? AND request LIKE ? ESCAPE '\\' ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                            (owner, term, limit, offset)).fetchall()
     return [dict(id=row['id'], created_at=row['created_at'], request=json.loads(row['request']),
                  parent_id=row['parent_id']) for row in rows]
 

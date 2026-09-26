@@ -8,7 +8,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORIES = ('api', 'tests', 'docs', 'knowledge', 'prompts', 'workflow', '.github', 'scripts')
 FILES = ('README.md', 'requirements.txt', 'Dockerfile', 'docker-compose.yml', 'docker-compose.dify.yml', '.env.example',
-         '.gitignore', '.gitattributes', '.dockerignore', 'pyproject.toml')
+         '.gitignore', '.gitattributes', '.dockerignore', 'pyproject.toml', 'LICENSE', '启动工作台.cmd', '运行测试.cmd', '项目讲解与面试问答.md', '核心基础知识与名词解释.md')
 
 
 def build():
@@ -16,7 +16,7 @@ def build():
     for directory in DIRECTORIES:
         paths.extend(p for p in (ROOT / directory).rglob('*') if p.is_file()
                      and '__pycache__' not in p.parts and p.suffix not in ('.pyc', '.db')
-                     and (p.suffix != '.png' or p.parent == ROOT / 'docs' / 'images'))
+                     and (p.suffix != '.png' or p.parent in (ROOT / 'docs' / 'images', ROOT / 'docs' / 'screenshots')))
     paths = sorted(set(paths))
     manifest = {}
     for path in paths:
@@ -26,7 +26,7 @@ def build():
         manifest[path.relative_to(ROOT).as_posix()] = hashlib.sha256(content).hexdigest()
     output = ROOT / 'release'
     output.mkdir(exist_ok=True)
-    target = output / 'smart-travel-agent-v0.4.0.zip'
+    target = output / 'smart-travel-agent-v1.0.0.zip'
     with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         def write(name, content):
             info = zipfile.ZipInfo('smart-travel-agent/' + name, date_time=(2020, 1, 1, 0, 0, 0))

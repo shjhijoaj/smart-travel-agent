@@ -39,6 +39,18 @@ def test_health():
     assert response.json()["status"] == "ok"
 
 
+def test_ready_reports_storage_and_provider(monkeypatch):
+    monkeypatch.delenv("DIFY_API_KEY", raising=False)
+    response = client.get("/api/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ready",
+        "service": "smart-travel-agent",
+        "provider": "local-fallback",
+    }
+
+
 def test_empty_destination_is_rejected():
     response = client.post(
         "/api/travel/plan",

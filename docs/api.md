@@ -1,6 +1,6 @@
 # API
 
-本地交互文档：`http://127.0.0.1:8010/docs`。Docker 对应 8000 端口。
+本地交互文档：`http://127.0.0.1:8790/docs`。Docker 默认也映射本机 8790 端口。
 
 本版提供结构化日程编辑、路线估算、局部调整和运行遥测；固定案例评测执行 `python scripts/evaluate_cases.py`，不调用真实模型。
 
@@ -37,12 +37,12 @@
 | GET /api/telemetry/summary | 当前账号的运行次数、成功率、耗时、估算令牌和成本 |
 | POST /api/travel/plan | 阻塞生成 |
 | POST /api/travel/stream | SSE 生成 |
-| GET /api/history | 当前账号或游客最近 100 条 |
+| GET /api/history | 当前账号/游客的历史；q 搜索，offset 偏移，limit 每页条数（默认 20，最大 100） |
 | GET /api/history/{id} | 当前用户的方案详情 |
 | DELETE /api/history/{id} | 删除单条历史 |
 | POST /api/history/{id}/replan | 阻塞生成新版本，保留原记录 |
 | POST /api/history/{id}/stream | SSE 生成新版本 |
-| PATCH /api/history/{id}/structured | 保存用户编辑后的 validation.days，不覆盖模型原文 |
+| PATCH /api/history/{id}/structured | 验证并保存 validation.days 和 edited_plan；重算检查结果，保留模型原文 |
 
 成功生成包含 plan_id、created_at、validation、weather；Chatflow 返回 answer，Workflow 返回 outputs。sources 是 Dify 提供的检索元数据，可能为空。validation 的金额未知时 calculated_total 为 null。保存失败附 save_warning，仍可下载方案。
 
@@ -60,4 +60,8 @@ data: {"event":"complete","result":{"plan_id":"...","answer":"完整正文"}}
 
 事件类型：status（节点状态）、weather、delta、replace（替换累计正文）、complete、error。只在 complete 后将结果视为成功；开始流后上游错误通过 error 表达，此时 HTTP 仍为 200。正常输入校验错误在流开始前返回 422。断开连接时尽力调用 Dify stop，不保存未完成方案；不提供断点续传。
 
-阻塞模式超时返回 504，上游失败返回 502；输入校验失败返回 422。无 Key 且 LOCAL_FALLBACK=true 时输出明确标注的演示。历史与偏好存于 TRAVEL_DB_PATH（默认 data/travel.db）。
+阻塞模式超时返回 504，上游失败返回 502；输入校验失败返回 422。无 Key 且 LOCAL_FALLBACK=true 时输出明确标注的手动日程。历史与偏好存于 TRAVEL_DB_PATH（默认 data/travel.db）。
+
+## 1.0.0 运行约束
+
+GET /api/ready 检查本地数据库写入及配置状态；provider=dify 不代表已探测外部模型。无 Key 且关闭手动模式时返回 503。生成默认每 IP 每小时 20 次，并发最多 4 个；拒绝时为 429 和 Retry-After。日期最多 31 天，同行最多 50 人，总预算上限 1000 万；结构化编辑每一天最多 20 项活动。

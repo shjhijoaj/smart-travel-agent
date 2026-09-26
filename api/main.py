@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from api import history
@@ -23,12 +23,15 @@ from api.orchestration import review as review_plan
 from api.itinerary import analyze
 from api.streaming import dify_stream, encode
 from pydantic import BaseModel, Field, field_validator
+from api.editor import StructuredUpdate, edited_text, offline_plan
+from api import limits
+from api import observability
 
 load_dotenv()
 
 app = FastAPI(
     title="Smart Travel Planning Agent",
-    version="0.4.0",
+    version="1.0.0",
 )
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(accounts.router)
@@ -44,9 +47,33 @@ async def same_origin_writes(request, call_next):
         actual = urlsplit(origin)
         if (actual.scheme, actual.netloc) != (expected.scheme, expected.netloc):
             return JSONResponse({'detail': '不允许跨站修改请求'}, status_code=403)
-    response = await call_next(request)
+    expensive = request.method == 'POST' and (request.url.path in {'/api/travel/plan', '/api/travel/stream'} or (request.url.path.startswith('/api/history/') and request.url.path.endswith(('/stream', '/replan'))))
+    acquired = False
+    if expensive:
+        if not limits.allow(request.client.host if request.client else 'local'):
+            return JSONResponse({'detail':'生成次数达到每小时上限，请稍后重试。已保存行程仍可查看和编辑。'}, status_code=429, headers={'Retry-After':'3600'})
+        acquired = limits.slots.acquire(blocking=False)
+        if not acquired:
+            return JSONResponse({'detail':'正在处理较多规划，请稍后重试。'}, status_code=429, headers={'Retry-After':'10'})
+    try:
+        response = await call_next(request)
+    except BaseException:
+        if acquired:
+            limits.slots.release()
+        raise
+    if acquired:
+        original_iterator = response.body_iterator
+        async def guarded_iterator():
+            try:
+                async for chunk in original_iterator:
+                    yield chunk
+            finally:
+                limits.slots.release()
+        response.body_iterator = guarded_iterator()
     if request.url.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
     return response
 
 OUTPUT_RULES = """【展示格式要求】直接输出简洁可执行方案，不寒暄、不写游记、不展示推理。
@@ -60,11 +87,11 @@ OUTPUT_RULES = """【展示格式要求】直接输出简洁可执行方案，�
 class TravelRequest(BaseModel):
     departure: str = Field(min_length=1, max_length=100)
     destination: str = Field(min_length=1, max_length=100)
-    travel_dates: str = Field(min_length=1)
-    budget: str = Field(min_length=1)
-    companions: str = Field(min_length=1)
+    travel_dates: str = Field(min_length=1, max_length=21)
+    budget: str = Field(min_length=1, max_length=20)
+    companions: str = Field(min_length=1, max_length=3)
     preferences: str = Field(min_length=1, max_length=3000)
-    language: str = "中文"
+    language: str = Field(default="中文", max_length=40)
     weather_location_id: Optional[int] = Field(default=None, gt=0)
     use_memory: bool = True
 
@@ -80,8 +107,8 @@ class TravelRequest(BaseModel):
     @field_validator("companions")
     @classmethod
     def validate_companions(cls, value: str) -> str:
-        if not re.fullmatch(r"[1-9][0-9]*", value):
-            raise ValueError("同行人数必须是正整数")
+        if not re.fullmatch(r"[1-9][0-9]*", value) or int(value)>50:
+            raise ValueError("同行人数须为 1～50 人")
         return value
 
     @field_validator("budget")
@@ -91,8 +118,8 @@ class TravelRequest(BaseModel):
             amount = float(value)
         except ValueError as exc:
             raise ValueError("预算必须是数字") from exc
-        if not math.isfinite(amount) or amount <= 0:
-            raise ValueError("预算必须大于 0")
+        if not math.isfinite(amount) or amount <= 0 or amount>10000000:
+            raise ValueError("预算须大于 0 且不超过一千万元")
         return value
 
     @field_validator("travel_dates")
@@ -108,36 +135,9 @@ class TravelRequest(BaseModel):
         return value
 
 
-class StructuredUpdate(BaseModel):
-    days: list[dict] = Field(min_length=1, max_length=31)
-
-
 def build_local_plan(request: TravelRequest) -> dict[str, Any]:
     """Return a deterministic offline plan when Dify is not configured."""
-    try:
-        budget = float(request.budget)
-    except ValueError:
-        budget = None
-
-    warnings = []
-    if budget is None:
-        warnings.append("预算无法解析，费用仅供参考")
-    elif budget < 1500:
-        warnings.append("预算偏紧，建议优先选择公共交通和经济型餐饮")
-
-    start, end = (date.fromisoformat(part) for part in request.travel_dates.split("/"))
-    days = "\n".join(
-        f"第{i + 1}天（{start + timedelta(days=i)}）：安排相邻活动并预留休息，具体地点待确认。"
-        for i in range((end - start).days + 1)
-    )
-    plan = (
-        f"行程概览：{request.departure}前往{request.destination}，日期：{request.travel_dates}，同行：{request.companions}人。\n"
-        f"每日行程：\n{days}\n"
-        f"预算估算：交通、住宿、餐饮和门票请以实际预订页面为准，用户预算为{request.budget}元。\n"
-        "雨天方案：优先室内博物馆、展馆、商业街或咖啡馆，具体开放时间待确认。\n"
-        "注意事项：天气、票价、库存和开放时间均需出行前再次确认。"
-    )
-    return {"success": True, "source": "local-fallback", "plan": plan, "warnings": warnings}
+    return offline_plan(request)
 
 
 def build_chat_query(request: TravelRequest) -> str:
@@ -176,6 +176,24 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "smart-travel-agent"}
 
 
+@app.get("/api/ready")
+def ready() -> dict[str, str]:
+    """Check the local persistence layer before accepting real requests."""
+    try:
+        with history.database() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS readiness_probe (id INTEGER PRIMARY KEY, checked INTEGER)")
+            conn.execute("INSERT OR REPLACE INTO readiness_probe VALUES (1, ?)", (int(time.time()),))
+    except (sqlite3.Error, OSError) as exc:
+        raise HTTPException(status_code=503, detail="本地数据存储未就绪") from exc
+    if not os.getenv('DIFY_API_KEY','').strip() and os.getenv('LOCAL_FALLBACK','true').lower()!='true':
+        raise HTTPException(status_code=503, detail='AI 服务尚未配置，且本地手动模式已关闭')
+    return {
+        "status": "ready",
+        "service": "smart-travel-agent",
+        "provider": "dify" if os.getenv("DIFY_API_KEY", "").strip() else "local-fallback",
+    }
+
+
 @app.post('/api/travel/weather')
 async def travel_weather(request: TravelRequest):
     start, end = (date.fromisoformat(x) for x in request.travel_dates.split('/'))
@@ -187,7 +205,7 @@ async def travel_route(request: RouteRequest, http_request: Request, response: R
     """Resolve selected itinerary places and return a transparent road estimate."""
     started = time.perf_counter()
     report = await calculate_route(request)
-    telemetry.record(session_owner(http_request, response), 'route', started, report.get('status') in {'ok', 'partial'},
+    observability.record(session_owner(http_request, response), 'route', started, report.get('status') in {'ok', 'partial'},
                      details={"status": report.get('status'), "stops": len(request.stops)})
     return report
 
@@ -196,7 +214,7 @@ async def travel_route(request: RouteRequest, http_request: Request, response: R
 async def travel_review(payload: dict, http_request: Request, response: Response):
     started = time.perf_counter()
     result = review_plan(payload.get('request') or {}, payload.get('weather'), payload.get('route'), payload.get('plan', ''))
-    telemetry.record(session_owner(http_request, response), 'orchestration_review', started, True, details={"status": result['status']})
+    observability.record(session_owner(http_request, response), 'orchestration_review', started, True, details={"status": result['status']})
     return result
 
 
@@ -220,7 +238,7 @@ def local_adjust(payload: dict, http_request: Request, response: Response):
             activities.append(item)
         copy_day['activities'] = activities
         adjusted.append(copy_day)
-    telemetry.record(session_owner(http_request, response), 'local_adjust', started, True,
+    observability.record(session_owner(http_request, response), 'local_adjust', started, True,
                      details={"actions": len(actions), "days": len(adjusted)})
     return {"status": "adjusted", "days": adjusted, "message": "已把原因和注意事项写入可编辑行程；地点替换仍需你确认后保存。"}
 
@@ -238,8 +256,9 @@ def session_owner(request: Request, response: Response):
 
 
 @app.get("/api/history")
-def list_history(request: Request, response: Response):
-    return {"items": history.list_plans(session_owner(request, response))}
+def list_history(request: Request, response: Response, q: str = Query(default='',max_length=100), offset: int = Query(default=0,ge=0,le=100000), limit: int = Query(default=20,ge=1,le=100)):
+    items=history.list_plans(session_owner(request,response),limit+1,q,offset)
+    return {"items":items[:limit],"has_more":len(items)>limit,"offset":offset}
 
 
 @app.get("/api/history/{plan_id}")
@@ -268,13 +287,15 @@ def update_structured(plan_id: str, payload: StructuredUpdate, request: Request,
         raise HTTPException(404, '未找到此方案')
     # Keep the original answer immutable; the user-editable schedule is a separate override.
     result = dict(record['result'])
-    validation = dict(result.get('validation') or {})
-    validation['days'] = payload.days
+    days=[d.model_dump() for d in payload.days]
+    result['edited_plan']=edited_text(result,days)
+    validation = analyze(result['edited_plan'],record['request']['travel_dates'],record['request']['budget'])
+    validation['days'] = days
     validation['structured_override'] = True
     result['validation'] = validation
     if not history.update_result(owner, plan_id, result):
         raise HTTPException(409, '行程保存失败，请重试')
-    return {"saved": True, "days": payload.days}
+    return {"saved": True, "days": days, "result":result}
 
 
 @app.get('/api/telemetry/summary')
@@ -301,12 +322,12 @@ async def create_plan(request: TravelRequest, http_request: Request, response: R
         result = await generate_plan(request, accounts.planning_memory(http_request, request.use_memory), owner)
         saved = saved_result(owner, request, result)
         answer = saved.get('answer') or saved.get('plan') or ''
-        telemetry.record(owner, 'plan', started, True, model=os.getenv('DIFY_MODEL', 'dify'),
-                         tokens=len(answer) // 4, cost=(len(answer) / 4 / 1000) * float(os.getenv('DIFY_COST_PER_1K', '0')),
+        observability.record(owner, 'plan', started, True, model=os.getenv('DIFY_MODEL', 'dify'),
+                         tokens=len(answer) // 4, cost=observability.estimated_cost(answer),
                          details={"source": saved.get('source'), "plan_id": saved.get('plan_id')})
         return saved
     except Exception:
-        telemetry.record(owner, 'plan', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
+        observability.record(owner, 'plan', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
         raise
 
 
@@ -469,22 +490,22 @@ async def stream_response(inputs, http_request, response, parent_id=None):
                 return
             saved = saved_result(owner, inputs, result, parent_id)
             answer = saved.get('answer') or saved.get('plan') or ''
-            telemetry.record(owner, 'stream', started, True, model=os.getenv('DIFY_MODEL', 'dify'),
-                             tokens=len(answer) // 4, cost=(len(answer) / 4 / 1000) * float(os.getenv('DIFY_COST_PER_1K', '0')),
+            observability.record(owner, 'stream', started, True, model=os.getenv('DIFY_MODEL', 'dify'),
+                             tokens=len(answer) // 4, cost=observability.estimated_cost(answer),
                              details={"source": saved.get('source'), "plan_id": saved.get('plan_id')})
             yield encode({'event':'complete','result':saved})
         except httpx.TimeoutException:
-            telemetry.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
+            observability.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
             yield encode({'event':'error','message':'生成超时，请重试；不完整方案未保存'})
         except httpx.HTTPError:
-            telemetry.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
+            observability.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
             yield encode({'event':'error','message':'模型服务连接失败，不完整方案未保存'})
         except (ValueError, KeyError, TypeError) as exc:
-            telemetry.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
+            observability.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
             # These exceptions can include provider fragments; expose a fixed message.
             yield encode({'event':'error','message':'生成中断或响应格式异常，请检查服务后重试'})
         except HTTPException as exc:
-            telemetry.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
+            observability.record(owner, 'stream', started, False, model=os.getenv('DIFY_MODEL', 'dify'))
             yield encode({'event':'error','message':str(exc.detail)})
 
     stream = StreamingResponse(events(), media_type='text/event-stream', headers={'Cache-Control':'no-cache', 'X-Accel-Buffering':'no'})

@@ -38,5 +38,5 @@ Python 依赖版本固定在 [`requirements.txt`](../requirements.txt)。具体�
 
 - `knowledge/` 中的旅行知识是用于演示检索链路的示例内容，不代表对任何地点、价格、开放时间或官方信息的背书。
 - `docs/images/` 中的界面截图使用固定的虚构行程，仅用于展示本项目界面。
-- 仓库当前**未指定开源许可证**；第三方组件和服务分别遵循其上游许可证与条款。
+- 本仓库代码采用根目录 LICENSE 中的 MIT 许可；第三方组件和服务分别遵循其上游许可证与条款。
 - 请勿提交 API Key、Cookie、真实账号、个人行程、供应商私有资料或其他未获授权的第三方内容。发现归属或授权问题时，请通过 [Issue](https://github.com/shjhijoaj/smart-travel-agent/issues) 联系维护者。

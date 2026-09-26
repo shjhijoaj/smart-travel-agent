@@ -12,6 +12,7 @@ def record(owner, operation, started, success, *, model="", tokens=0, cost=0.0, 
             id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, operation TEXT NOT NULL,
             created_at REAL NOT NULL, duration_ms REAL NOT NULL, success INTEGER NOT NULL,
             model TEXT, tokens INTEGER NOT NULL, estimated_cost REAL NOT NULL, details TEXT)""")
+        conn.execute("CREATE INDEX IF NOT EXISTS run_events_owner ON run_events(owner, created_at DESC)")
         conn.execute("INSERT INTO run_events(owner,operation,created_at,duration_ms,success,model,tokens,estimated_cost,details) VALUES (?,?,?,?,?,?,?,?,?)",
                      (owner, operation, time.time(), duration, int(success), model, int(tokens), float(cost),
                       json.dumps(details or {}, ensure_ascii=False)))
@@ -24,6 +25,7 @@ def summary(owner):
             id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, operation TEXT NOT NULL,
             created_at REAL NOT NULL, duration_ms REAL NOT NULL, success INTEGER NOT NULL,
             model TEXT, tokens INTEGER NOT NULL, estimated_cost REAL NOT NULL, details TEXT)""")
+        conn.execute("CREATE INDEX IF NOT EXISTS run_events_owner ON run_events(owner, created_at DESC)")
         row = conn.execute("""SELECT COUNT(*) count, COALESCE(SUM(success),0) successes,
             COALESCE(AVG(duration_ms),0) avg_ms, COALESCE(SUM(tokens),0) tokens,
             COALESCE(SUM(estimated_cost),0) cost FROM run_events WHERE owner=?""", (owner,)).fetchone()
